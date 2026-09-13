@@ -12,6 +12,7 @@ import dlt
 from pyspark.sql.types import *
 
 volume_path = "/Volumes/earthquake_dev_catalog/bronze/earthquake_volume"
+primary_key = "id"
 
 properties_schema = StructType(
     [
@@ -55,7 +56,7 @@ feature_schema = StructType(
 schema = ArrayType(feature_schema)
 
 
-@dlt.table(name="earthquake_data_tbl")
+@dlt.view(name="earthquake_data_vw")
 def earthquake_data():
     df = (
         spark.readStream.format("cloudFiles")
@@ -66,7 +67,7 @@ def earthquake_data():
 
     df = df.withColumn("parsed_data", from_json(col("features"), schema))
 
-    df = df.select(explode(col("parsed_data")).alias("features"))
+    df = df.select(explode(col("parsed_data")).alias("features"),"_load_timestamp")
     df = df.select(
         col("features.properties.mag").alias("mag"),
         col("features.properties.place").alias("place"),
@@ -96,6 +97,7 @@ def earthquake_data():
         col("features.geometry.coordinates")[0].alias("longitude"),
         col("features.geometry.coordinates")[1].alias("latitude"),
         col("features.geometry.coordinates")[2].alias("depth"),
+        "_load_timestamp"
     )
     df = (
         df.withColumn("time", from_unixtime(col("time") / 1000).cast("timestamp"))
@@ -109,4 +111,17 @@ def earthquake_data():
         .withColumn("tsunami", col("tsunami").cast("double"))
         .withColumn("felt", col("felt").cast("double"))
         )
+    
     return df
+
+dlt.create_streaming_table(name="earthquake_data_streaming_tbl_final")
+
+dlt.apply_changes(
+    target = "earthquake_data_streaming_tbl_final",
+    source = "earthquake_data_vw",
+    keys = [primary_key],
+    sequence_by = "_load_timestamp",
+    stored_as_scd_type = 1
+    # schema_evolution="rescue",
+    # partition_cols=["year", "
+)

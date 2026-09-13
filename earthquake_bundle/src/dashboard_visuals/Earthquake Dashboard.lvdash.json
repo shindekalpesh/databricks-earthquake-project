@@ -1,0 +1,494 @@
+{
+  "datasets": [
+    {
+      "name": "e2c565b2",
+      "displayName": "earthquake_detail",
+      "queryLines": [
+        "SELECT * FROM earthquake_data_streaming_tbl_final;"
+      ],
+      "catalog": "earthquake_dev_catalog",
+      "schema": "silver"
+    },
+    {
+      "name": "edbc6f51",
+      "displayName": "magnitude_bucket",
+      "queryLines": [
+        "SELECT \r\n",
+        "    COUNT(*) AS total_magnitude_bucket,\r\n",
+        "    magnitude_bucket FROM (\r\n",
+        "        SELECT \r\n",
+        "            CASE\r\n",
+        "                WHEN mag < 2 THEN 'Micro (<2)'\r\n",
+        "                WHEN mag >= 2 AND mag < 3 THEN 'Minor (2-3)'\r\n",
+        "                WHEN mag >= 3 AND mag < 4 THEN 'Light (3-4)'\r\n",
+        "                ELSE 'Moderate (>=4)'\r\n",
+        "    END AS magnitude_bucket\r\n",
+        "        FROM earthquake_data_streaming_tbl_final)\r\n",
+        "        GROUP BY magnitude_bucket"
+      ],
+      "catalog": "earthquake_dev_catalog",
+      "schema": "silver"
+    },
+    {
+      "name": "7e21fcf6",
+      "displayName": "country_wise_bucket",
+      "queryLines": [
+        "SELECT \r\n",
+        "    COUNT(*) AS event_count,\r\n",
+        "    -- SPLIT(place, ', ')[1] AS country\r\n",
+        "    CASE\r\n",
+        "        WHEN SIZE(SPLIT(place, ', ')) = 1 THEN SPLIT(place, ', ')[0]\r\n",
+        "        ELSE SPLIT(place, ', ')[1]\r\n",
+        "    END AS country\r\n",
+        "FROM earthquake_data_streaming_tbl_final\r\n",
+        "GROUP BY country\r\n",
+        "ORDER BY event_count DESC;"
+      ],
+      "catalog": "earthquake_dev_catalog",
+      "schema": "silver"
+    }
+  ],
+  "pages": [
+    {
+      "name": "7b114912",
+      "displayName": "earthquake",
+      "layout": [
+        {
+          "widget": {
+            "name": "9a9a60aa",
+            "multilineTextboxSpec": {
+              "lines": [
+                "<span style=\"text-align:center;display:block\"><span style=\"font-size: 48px;line-height: 1.5;font-family: Merriweather;text-decoration: underline;\">EARTHQUAKE DASHBOARD</span></span>"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 10,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "earthquake-detailed-table",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "e2c565b2",
+                  "fields": [
+                    {
+                      "name": "time",
+                      "expression": "`time`"
+                    },
+                    {
+                      "name": "place",
+                      "expression": "`place`"
+                    },
+                    {
+                      "name": "mag",
+                      "expression": "`mag`"
+                    },
+                    {
+                      "name": "tsunami",
+                      "expression": "`tsunami`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "<span style=\"text-align:center;display:block;\"><span style=\"font-size: 16px;\">EARTHQUAKE DETAILED TABLE</span></span>",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "bandedRows": {
+                "enabled": true
+              },
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "time"
+                  },
+                  {
+                    "fieldName": "place"
+                  },
+                  {
+                    "fieldName": "mag"
+                  },
+                  {
+                    "fieldName": "tsunami"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 7,
+            "width": 12,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "geographical-view",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "e2c565b2",
+                  "fields": [
+                    {
+                      "name": "mag",
+                      "expression": "`mag`"
+                    },
+                    {
+                      "name": "latitude",
+                      "expression": "`latitude`"
+                    },
+                    {
+                      "name": "longitude",
+                      "expression": "`longitude`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "GEAOGRAPHICAL VIEW",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "mark": {
+                "opacity": 0.39,
+                "size": 0,
+                "shape": "triangle-up"
+              },
+              "widgetType": "symbol-map",
+              "encodings": {
+                "coordinates": {
+                  "latitude": {
+                    "fieldName": "latitude"
+                  },
+                  "longitude": {
+                    "fieldName": "longitude"
+                  }
+                },
+                "color": {
+                  "fieldName": "mag",
+                  "scale": {
+                    "type": "quantitative",
+                    "colorRamp": {
+                      "mode": "single-hue",
+                      "baseColor": {
+                        "themeColorType": "visualizationColors",
+                        "position": 4
+                      }
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 12,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "magnitude-bucket-pie-chart",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "edbc6f51",
+                  "fields": [
+                    {
+                      "name": "sum(total_magnitude_bucket)",
+                      "expression": "SUM(`total_magnitude_bucket`)"
+                    },
+                    {
+                      "name": "magnitude_bucket",
+                      "expression": "`magnitude_bucket`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "<span style=\"text-align:center;display:block;\"><span style=\"font-size: 16px;\">MAGNITUDE BUCKET PIE CHART</span></span>",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "sum(total_magnitude_bucket)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "axis": {
+                    "title": "total magnitude"
+                  },
+                  "displayName": "TOTAL MAGNITUDE"
+                },
+                "color": {
+                  "fieldName": "magnitude_bucket",
+                  "displayName": "bucket",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "label": {
+                  "show": false
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 13,
+            "width": 6,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "top-10-countries-total-number-of-events",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "7e21fcf6",
+                  "fields": [
+                    {
+                      "name": "country",
+                      "expression": "`country`"
+                    },
+                    {
+                      "name": "sum(event_count)",
+                      "expression": "SUM(`event_count`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "showDescription": false,
+                "title": {
+                  "value": "<span style=\"text-align:center;display:block;\"><span style=\"font-size: 16px;\">TOP 10 COUNTRIES WITH TOTAL NUMBER OF EVENTS</span></span>",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "country",
+                  "scale": {
+                    "type": "categorical",
+                    "categorySize": {
+                      "type": "number-of-categories",
+                      "number": 10
+                    },
+                    "sort": {
+                      "by": "custom-order",
+                      "orderedValues": [
+                        "Alaska",
+                        "Aleutian Islands",
+                        "CA",
+                        "Canada",
+                        "Colombia",
+                        "Dominican Republic",
+                        "Greece",
+                        "Hawaii",
+                        "Japan",
+                        "Japan region",
+                        "Nevada",
+                        "New Mexico",
+                        "Papua New Guinea",
+                        "Puerto Rico",
+                        "Solomon Islands",
+                        "south of the Aleutian Islands",
+                        "South Sandwich Islands region",
+                        "southeast of the Loyalty Islands",
+                        "Texas",
+                        "U.S. Virgin Islands",
+                        "Utah",
+                        "Vanuatu",
+                        "Washington"
+                      ]
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(event_count)",
+                  "axis": {
+                    "title": "event count"
+                  },
+                  "scale": {
+                    "type": "quantitative",
+                    "reverse": false
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 13,
+            "width": 6,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "count1",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "e2c565b2",
+                  "fields": [
+                    {
+                      "name": "count(id)",
+                      "expression": "COUNT(`id`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "<span style=\"text-align:center;display:block\"><span style=\"font-size: 16px;\">COUNT</span></span>",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "count(id)"
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 10,
+            "y": 0,
+            "width": 2,
+            "height": 2
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "49b41e14",
+      "displayName": "Global Filters",
+      "layout": [
+        {
+          "widget": {
+            "name": "date",
+            "queries": [
+              {
+                "name": "dashboards/01f1af7637691469b32f8a526c13dc8d/datasets/01f1af7676bd1b9ca20dc923845ce36f_daily(time)",
+                "query": {
+                  "datasetName": "e2c565b2",
+                  "fields": [
+                    {
+                      "name": "daily(time)",
+                      "expression": "DATE_TRUNC(\"DAY\", `time`)"
+                    },
+                    {
+                      "name": "daily(time)_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "DATE",
+                  "fields": []
+                }
+              },
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "daily(time)",
+                    "displayName": "DAILY(time)",
+                    "queryName": "dashboards/01f1af7637691469b32f8a526c13dc8d/datasets/01f1af7676bd1b9ca20dc923845ce36f_daily(time)"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 1,
+            "height": 2
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_GLOBAL_FILTERS",
+      "layoutVersion": "GRID_V1"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "widgetHeaderAlignment": "ALIGNMENT_UNSPECIFIED"
+    },
+    "applyModeEnabled": false
+  }
+}
